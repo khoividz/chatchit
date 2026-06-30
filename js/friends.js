@@ -1,11 +1,4 @@
-const Friends = {
-  async searchUser(query) {
-    if (!Utils.validateId(query)) return null;
-    return await DB.getUser(query);
-  },
-
-  async sendFriendRequest(targetId) {
-    const currentUser = Utils.getCurrentUser();
+https://chatchit-production-0f78.up.railway.app/
     if (!currentUser) return { success: false, error: 'not_logged_in' };
     if (currentUser.id === targetId) return { success: false, error: 'self_request' };
     if (!Utils.validateId(targetId)) return { success: false, error: 'invalid_id' };
