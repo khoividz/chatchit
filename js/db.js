@@ -252,7 +252,7 @@ var DB = {
     var data = snap ? snap.val() : null;
     if (!data) return [];
     return Object.keys(data).map(function(k) {
-      return { id: k, from: data[k].from, text: data[k].text, timestamp: data[k].timestamp, seen: data[k].seen || false };
+      return { id: k, from: data[k].from, text: data[k].text, timestamp: data[k].timestamp, seen: data[k].seen || false, type: data[k].type || '' };
     });
   },
 
@@ -262,7 +262,7 @@ var DB = {
     var handler = function(snap) {
       var data = snap.val();
       callback(data ? Object.keys(data).map(function(k) {
-        return { id: k, from: data[k].from, text: data[k].text, timestamp: data[k].timestamp, seen: data[k].seen || false };
+        return { id: k, from: data[k].from, text: data[k].text, timestamp: data[k].timestamp, seen: data[k].seen || false, type: data[k].type || '' };
       }) : []);
     };
     ref.on('value', handler);
@@ -303,6 +303,54 @@ var DB = {
     if (!_db) return function() {};
     var ref = _db.ref('typing/' + conversationId);
     var handler = function(snap) { callback(snap.val()); };
+    ref.on('value', handler);
+    return function() { ref.off('value', handler); };
+  },
+
+  // ==================== GROUPS ====================
+  createGroup: async function(groupData) {
+    var ref = await fbPush(fbRef('groups'), groupData);
+    return ref ? ref.key : null;
+  },
+
+  getGroup: async function(groupId) {
+    var snap = await fbOnce(fbRef('groups/' + groupId));
+    var data = snap ? snap.val() : null;
+    if (data) data.id = groupId;
+    return data;
+  },
+
+  updateGroup: async function(groupId, data) {
+    await fbUpdate(fbRef('groups/' + groupId), data);
+  },
+
+  getAllGroups: async function() {
+    var snap = await fbOnce(fbRef('groups'));
+    var data = snap ? snap.val() : null;
+    if (!data) return [];
+    return Object.keys(data).map(function(k) {
+      var g = data[k];
+      g.id = k;
+      return g;
+    });
+  },
+
+  sendGroupMessage: async function(groupId, message) {
+    var ref = await fbPush(fbRef('groupMessages/' + groupId), message);
+    return ref ? ref.key : null;
+  },
+
+  onGroupMessages: function(groupId, callback) {
+    if (!_db) return function() {};
+    var ref = _db.ref('groupMessages/' + groupId).orderByChild('timestamp');
+    var handler = function(snap) {
+      var data = snap.val();
+      callback(data ? Object.keys(data).map(function(k) {
+        var m = data[k];
+        m.id = k;
+        return m;
+      }) : []);
+    };
     ref.on('value', handler);
     return function() { ref.off('value', handler); };
   },

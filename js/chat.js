@@ -4,6 +4,7 @@ var Chat = {
   isTyping: false,
   unsubscribeMessages: null,
   unsubscribeTyping: null,
+  _lastRenderedMessages: null,
 
   openChat(friendId) {
     this.closeChat();
@@ -40,23 +41,26 @@ var Chat = {
     });
   },
 
-  async sendMessage(friendId, text) {
+  async sendMessage(friendId, text, type) {
     const currentUser = Utils.getCurrentUser();
-    if (!currentUser || !text.trim()) return;
+    if (!currentUser) return;
+    if (type !== 'sticker' && !text.trim()) return;
 
     const convId = Utils.getConversationId(currentUser.id, friendId);
-    const message = {
+    var message = {
       from: currentUser.id,
-      text: text.trim(),
+      text: type === 'sticker' ? text : text.trim(),
       timestamp: Date.now(),
       seen: false,
     };
+    if (type === 'sticker') message.type = 'sticker';
 
     await DB.sendMessage(convId, message);
     this.stopTyping(friendId);
   },
 
   renderMessages(messages) {
+    this._lastRenderedMessages = messages;
     const container = document.getElementById('chatMessages');
     if (!container) return;
 
@@ -93,14 +97,44 @@ var Chat = {
           ? '<span class="message-status" title="Đã gửi">\u2713</span>'
           : '';
 
+      var msgId = msg.id || '';
+      var isSticker = msg.type === 'sticker';
+
       html += '<div class="message-row ' + (isSent ? 'sent' : 'received') + '">'
-        + '<div class="message-bubble ' + (isSent ? 'sent' : 'received') + '">'
-        + Utils.escapeHtml(msg.text)
+        + '<div class="message-bubble ' + (isSent ? 'sent' : 'received') + (isSticker ? ' message-sticker' : '') + '"'
+        + ' data-msg-id="' + msgId + '"'
+        + ' onclick="Reactions.showPicker(\'' + msgId + '\', this)"'
+        + ' ontouchstart="Chat._touchStart(event, \'' + msgId + '\')"'
+        + ' ontouchend="Chat._touchEnd(event)"'
+        + '>'
+        + (isSticker
+            ? '<div class="sticker-display">' + msg.text + '</div>'
+            : Utils.escapeHtml(msg.text))
         + '<span class="message-time">' + Utils.formatTime(msg.timestamp) + seenIcon + '</span>'
-        + '</div></div>';
+        + '</div>'
+        + '<div class="message-reactions" id="reactions-' + msgId + '"></div>'
+        + '</div>';
     });
 
     container.innerHTML = html;
+
+    messages.forEach(function(msg) {
+      var msgId = msg.id || '';
+      if (msgId) {
+        var rc = document.getElementById('reactions-' + msgId);
+        if (rc) Reactions.renderReactions(msgId, rc);
+      }
+    });
+  },
+
+  _touchStart(event, msgId) {
+    Chat._touchTimer = setTimeout(function() {
+      Reactions.showPicker(msgId, event.currentTarget);
+    }, 500);
+  },
+
+  _touchEnd() {
+    clearTimeout(Chat._touchTimer);
   },
 
   async markAsSeen(friendId) {
@@ -113,6 +147,7 @@ var Chat = {
   setupInputListeners(friendId) {
     const textarea = document.getElementById('chatInput');
     const sendBtn = document.getElementById('sendBtn');
+    const stickerBtn = document.getElementById('stickerBtn');
     if (!textarea || !sendBtn) return;
 
     const send = () => {
@@ -147,6 +182,15 @@ var Chat = {
 
     sendBtn.onclick = send;
     sendBtn.disabled = true;
+
+    if (stickerBtn) {
+      stickerBtn.onclick = function() {
+        Stickers.openPicker(friendId, function(stickerHtml) {
+          Chat.sendMessage(friendId, stickerHtml, 'sticker');
+          Stickers.closePicker();
+        });
+      };
+    }
   },
 
   startTyping(friendId) {

@@ -74,6 +74,7 @@ var App = {
     this.setupFriendsSubscription();
     this.setupSearchHandlers();
     this.setupMobileMenu('.app-sidebar', 'mobileMenuBtn');
+    this.setupGroupHandlers();
   },
 
   setupFriendsSubscription: function() {
@@ -109,6 +110,7 @@ var App = {
     this._lastFriends = friends;
     this.renderFriendsList(friends);
     this.setupMessageListeners(friendIds);
+    Groups.renderGroupList();
   },
 
   setupMessageListeners: function(friendIds) {
@@ -305,6 +307,12 @@ var App = {
 
     var params = new URLSearchParams(window.location.search);
     var friendId = params.get('friend');
+    var groupId = params.get('group');
+
+    if (groupId) {
+      await this.initGroupChat(groupId);
+      return;
+    }
 
     if (!friendId || !Utils.validateId(friendId)) {
       window.location.href = 'dashboard.html';
@@ -323,6 +331,15 @@ var App = {
       this.renderChatHeader(friendId);
       Chat.openChat(friendId);
 
+      var convId = Utils.getConversationId(currentUser.id, friendId);
+      var wallpaperBtn = document.getElementById('wallpaperBtn');
+      if (wallpaperBtn) {
+        wallpaperBtn.addEventListener('click', function() {
+          Wallpaper.openSettings(convId);
+        });
+      }
+      Wallpaper.applyWallpaper(convId);
+
       var backBtn = document.getElementById('backBtn');
       if (backBtn) {
         backBtn.addEventListener('click', function() {
@@ -334,6 +351,56 @@ var App = {
       this.renderChatSidebar(friendId);
     } catch (e) {
       Utils.showToast('Lỗi kết nối: ' + (e.message || ''), 'error');
+    }
+  },
+
+  initGroupChat: async function(groupId) {
+    try {
+      var currentUser = Utils.getCurrentUser();
+      var group = await Groups.getGroup(groupId);
+      if (!group || !group.members || !group.members[currentUser.id]) {
+        window.location.href = 'dashboard.html';
+        return;
+      }
+
+      this.renderGroupChatHeader(group);
+      Groups.openGroupChat(groupId);
+
+      var convId = 'group_' + groupId;
+      var wallpaperBtn = document.getElementById('wallpaperBtn');
+      if (wallpaperBtn) {
+        wallpaperBtn.addEventListener('click', function() {
+          Wallpaper.openSettings(convId);
+        });
+      }
+      Wallpaper.applyWallpaper(convId);
+
+      var backBtn = document.getElementById('backBtn');
+      if (backBtn) {
+        backBtn.addEventListener('click', function() {
+          window.location.href = 'dashboard.html';
+        });
+      }
+
+      this.setupMobileMenu('.app-sidebar', 'sidebarToggle');
+      this.renderChatSidebar();
+    } catch (e) {
+      Utils.showToast('Lỗi kết nối: ' + (e.message || ''), 'error');
+    }
+  },
+
+  renderGroupChatHeader: function(group) {
+    var avatarContainer = document.getElementById('chatAvatar');
+    var nameContainer = document.getElementById('chatUserName');
+    var idContainer = document.getElementById('chatUserId');
+    if (avatarContainer) {
+      avatarContainer.src = 'assets/images/avatar-default.svg';
+      avatarContainer.style.borderRadius = '12px';
+    }
+    if (nameContainer) nameContainer.textContent = group.name || 'Nhóm';
+    if (idContainer) {
+      var memberCount = group.members ? Object.keys(group.members).length : 0;
+      idContainer.textContent = memberCount + ' thành viên';
     }
   },
 
@@ -408,6 +475,15 @@ var App = {
       }).join('');
     } catch (e) {
       container.innerHTML = '<p style="padding: 20px; color: var(--text-muted); font-size: 0.875rem;">Lỗi tải danh sách bạn bè</p>';
+    }
+  },
+
+  setupGroupHandlers: function() {
+    var createBtn = document.getElementById('createGroupBtn');
+    if (createBtn) {
+      createBtn.addEventListener('click', function() {
+        Groups.showCreateModal();
+      });
     }
   },
 
