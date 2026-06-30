@@ -121,6 +121,7 @@ var Chat = {
     messages.forEach(function(msg) {
       var msgId = msg.id || '';
       if (msgId) {
+        Reactions.attachToMessage(msgId);
         var rc = document.getElementById('reactions-' + msgId);
         if (rc) Reactions.renderReactions(msgId, rc);
       }

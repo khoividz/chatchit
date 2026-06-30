@@ -156,6 +156,7 @@
   display: flex;
   gap: 8px;
   align-items: flex-end;
+  position: relative;
 }
 
 .chat-input-area .input-wrapper {

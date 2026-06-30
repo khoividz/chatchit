@@ -70,49 +70,49 @@ var Stickers = {
     }
 
     var self = this;
-    panel.querySelectorAll('.sticker-item').forEach(function(el) {
-      el.addEventListener('click', function() {
-        var id = el.dataset.id;
-        var s = allStickers.find(function(st) { return st.id === id; });
-        if (!s) return;
-        if (s.type === 'custom') {
-          callback('<img src="' + Utils.escapeHtml(s.data) + '" style="max-width:160px;max-height:160px;" alt="sticker">');
-        } else {
-          callback('<span style="font-size:64px;line-height:1;">' + s.emoji + '</span>');
-        }
-        self.closePicker();
+
+    function handleStickerClick(id) {
+      var all = self.getAll(userId.id);
+      var s = all.find(function(st) { return st.id === id; });
+      if (!s) return;
+      if (s.type === 'custom') {
+        callback('<img src="' + Utils.escapeHtml(s.data) + '" style="max-width:160px;max-height:160px;" alt="sticker">');
+      } else {
+        callback('<span style="font-size:64px;line-height:1;">' + s.emoji + '</span>');
+      }
+      self.closePicker();
+    }
+
+    function handleStickerDelete(id) {
+      if (confirm('Xóa sticker này?')) {
+        CustomSticker.remove(userId.id, id);
+        Stickers.closePicker();
+        Stickers.openPicker(targetConversationId, callback);
+      }
+    }
+
+    var grid = document.getElementById('stickerGrid');
+    if (grid) {
+      grid.addEventListener('click', function(e) {
+        var item = e.target.closest('.sticker-item');
+        if (item) handleStickerClick(item.dataset.id);
       });
 
-      el.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-        var id = el.dataset.id;
-        var s = allStickers.find(function(st) { return st.id === id; });
-        if (s && s.type === 'custom') {
-          if (confirm('Xóa sticker này?')) {
-            CustomSticker.remove(userId.id, id);
-            Stickers.closePicker();
-            Stickers.openPicker(targetConversationId, callback);
-          }
-        }
+      grid.addEventListener('contextmenu', function(e) {
+        var item = e.target.closest('.sticker-item.custom');
+        if (item) { e.preventDefault(); handleStickerDelete(item.dataset.id); }
       });
 
       var pressTimer;
-      el.addEventListener('touchstart', function() {
-        var id = el.dataset.id;
-        var s = allStickers.find(function(st) { return st.id === id; });
-        if (s && s.type === 'custom') {
-          pressTimer = setTimeout(function() {
-            if (confirm('Xóa sticker này?')) {
-              CustomSticker.remove(userId.id, id);
-              Stickers.closePicker();
-              Stickers.openPicker(targetConversationId, callback);
-            }
-          }, 800);
+      grid.addEventListener('touchstart', function(e) {
+        var item = e.target.closest('.sticker-item.custom');
+        if (item) {
+          pressTimer = setTimeout(function() { handleStickerDelete(item.dataset.id); }, 800);
         }
       });
-      el.addEventListener('touchend', function() { clearTimeout(pressTimer); });
-      el.addEventListener('touchmove', function() { clearTimeout(pressTimer); });
-    });
+      grid.addEventListener('touchend', function() { clearTimeout(pressTimer); });
+      grid.addEventListener('touchmove', function() { clearTimeout(pressTimer); });
+    }
 
     var uploadBtn = document.getElementById('customStickerUploadBtn');
     var uploadInput = document.getElementById('customStickerInput');

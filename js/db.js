@@ -307,6 +307,63 @@ var DB = {
     return function() { ref.off('value', handler); };
   },
 
+  // ==================== REACTIONS ====================
+  setReaction: async function(messageId, userId, icon) {
+    if (icon) {
+      var existing = await fbOnce(fbRef('reactions/' + messageId + '/' + userId));
+      var current = existing ? existing.val() : null;
+      if (current === icon) {
+        await fbRemove(fbRef('reactions/' + messageId + '/' + userId));
+      } else {
+        await fbSet(fbRef('reactions/' + messageId + '/' + userId), icon);
+      }
+    } else {
+      await fbRemove(fbRef('reactions/' + messageId + '/' + userId));
+    }
+  },
+
+  onReactions: function(messageId, callback) {
+    if (!_db) return function() {};
+    var ref = _db.ref('reactions/' + messageId);
+    var handler = function(snap) {
+      var data = snap.val();
+      var result = { reactions: {}, users: {} };
+      if (data) {
+        Object.keys(data).forEach(function(uid) {
+          var icon = data[uid];
+          if (!result.reactions[icon]) result.reactions[icon] = 0;
+          result.reactions[icon]++;
+          result.users[uid] = icon;
+        });
+      }
+      callback(result);
+    };
+    ref.on('value', handler);
+    return function() { ref.off('value', handler); };
+  },
+
+  // ==================== WALLPAPERS ====================
+  setWallpaper: async function(conversationId, value) {
+    if (value) {
+      await fbSet(fbRef('wallpapers/' + conversationId), value);
+    } else {
+      await fbRemove(fbRef('wallpapers/' + conversationId));
+    }
+  },
+
+  getWallpaper: async function(conversationId) {
+    var snap = await fbOnce(fbRef('wallpapers/' + conversationId));
+    return snap ? snap.val() : null;
+  },
+
+  onWallpaper: function(conversationId, callback) {
+    if (!_db) return function() {};
+    var ref = _db.ref('wallpapers/' + conversationId);
+    var handler = function(snap) { callback(snap.val()); };
+    ref.on('value', handler);
+    return function() { ref.off('value', handler); };
+  },
+
   // ==================== GROUPS ====================
   createGroup: async function(groupData) {
     var ref = await fbPush(fbRef('groups'), groupData);
