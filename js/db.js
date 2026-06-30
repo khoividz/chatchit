@@ -157,6 +157,25 @@ var DB = {
     return function() { ref.off('value', handler); };
   },
 
+  // ==================== USERNAME INDEX ====================
+  getUserIdByUsername: async function(username) {
+    var snap = await fbOnce(fbRef('usernameIndex/' + username.toLowerCase().trim()));
+    return snap ? snap.val() : null;
+  },
+
+  setUsernameIndex: async function(username, userId) {
+    await fbSet(fbRef('usernameIndex/' + username.toLowerCase().trim()), userId);
+  },
+
+  removeUsernameIndex: async function(username) {
+    await fbRemove(fbRef('usernameIndex/' + username.toLowerCase().trim()));
+  },
+
+  getAllUsernames: async function() {
+    var snap = await fbOnce(fbRef('usernameIndex'));
+    return snap ? snap.val() : null;
+  },
+
   // ==================== FRIEND REQUESTS ====================
   sendFriendRequest: async function(request) {
     var ref = await fbPush(fbRef('friendRequests'), request);

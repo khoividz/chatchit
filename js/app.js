@@ -31,32 +31,96 @@ var App = {
   initLanding: function() {
     if (Auth.redirectIfLoggedIn()) return;
 
-    var createBtn = document.getElementById('createAccountBtn');
-    if (!createBtn) return;
+    if (!DB.isReady() || !DB.isConfigured()) {
+      var forms = document.querySelectorAll('.auth-form');
+      forms.forEach(function(f) {
+        f.innerHTML = '<p style="color:var(--danger);font-size:0.875rem;text-align:center;">Chưa cấu hình Firebase. Vui lòng cập nhật thông tin Firebase trong file js/db.js</p>';
+      });
+      return;
+    }
 
-    createBtn.addEventListener('click', async function() {
-      if (createBtn.disabled) return;
+    var tabs = document.querySelectorAll('.auth-tab');
+    var loginForm = document.getElementById('loginForm');
+    var registerForm = document.getElementById('registerForm');
 
-      createBtn.disabled = true;
-      createBtn.textContent = 'Đang tạo...';
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        tabs.forEach(function(t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        var target = tab.dataset.tab;
+        loginForm.classList.toggle('active', target === 'login');
+        registerForm.classList.toggle('active', target === 'register');
+        document.getElementById('loginError').style.display = 'none';
+        document.getElementById('registerError').style.display = 'none';
+      });
+    });
 
-      if (!DB.isReady() || !DB.isConfigured()) {
-        Utils.showToast('Chưa cấu hình Firebase. Vui lòng cập nhật thông tin Firebase trong file js/db.js', 'error');
-        createBtn.disabled = false;
-        createBtn.textContent = 'Tạo tài khoản ẩn danh';
+    var loginBtn = document.getElementById('loginBtn');
+    var loginUsername = document.getElementById('loginUsername');
+    var loginPassword = document.getElementById('loginPassword');
+    var loginError = document.getElementById('loginError');
+    var loginLoading = document.getElementById('loginLoading');
+
+    loginBtn.addEventListener('click', async function() {
+      loginBtn.disabled = true;
+      loginError.style.display = 'none';
+      loginLoading.classList.add('show');
+
+      try {
+        await Auth.login(loginUsername.value, loginPassword.value);
+        window.location.href = 'dashboard.html';
+      } catch (e) {
+        loginError.textContent = e.message || 'Đăng nhập thất bại';
+        loginError.style.display = 'block';
+        loginBtn.disabled = false;
+        loginLoading.classList.remove('show');
+      }
+    });
+
+    loginUsername.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') loginPassword.focus();
+    });
+    loginPassword.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') loginBtn.click();
+    });
+
+    var registerBtn = document.getElementById('registerBtn');
+    var regUsername = document.getElementById('registerUsername');
+    var regPassword = document.getElementById('registerPassword');
+    var regConfirm = document.getElementById('registerConfirm');
+    var regError = document.getElementById('registerError');
+    var regLoading = document.getElementById('registerLoading');
+
+    registerBtn.addEventListener('click', async function() {
+      if (regPassword.value !== regConfirm.value) {
+        regError.textContent = 'Mật khẩu nhập lại không khớp';
+        regError.style.display = 'block';
         return;
       }
 
+      registerBtn.disabled = true;
+      regError.style.display = 'none';
+      regLoading.classList.add('show');
+
       try {
-        await Auth.createAnonymousAccount();
-        Utils.showToast('Tạo tài khoản thành công!', 'success');
+        await Auth.register(regUsername.value, regPassword.value);
         window.location.href = 'dashboard.html';
       } catch (e) {
-        var msg = e && e.message ? e.message : 'Có lỗi xảy ra, vui lòng thử lại';
-        Utils.showToast(msg, 'error');
-        createBtn.disabled = false;
-        createBtn.textContent = 'Tạo tài khoản ẩn danh';
+        regError.textContent = e.message || 'Đăng ký thất bại';
+        regError.style.display = 'block';
+        registerBtn.disabled = false;
+        regLoading.classList.remove('show');
       }
+    });
+
+    regUsername.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') regPassword.focus();
+    });
+    regPassword.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') regConfirm.focus();
+    });
+    regConfirm.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') registerBtn.click();
     });
   },
 

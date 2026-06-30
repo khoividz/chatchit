@@ -7,12 +7,20 @@ var Utils = {
   },
 
   validateId(id) {
+    return /^\d{9}$/.test(id) || /^kv-dev-\d{6}$/.test(id);
+  },
+
+  isNewId(id) {
+    return /^\d{9}$/.test(id);
+  },
+
+  isOldId(id) {
     return /^kv-dev-\d{6}$/.test(id);
   },
 
   generateId() {
-    const num = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
-    return 'kv-dev-' + num;
+    var num = String(Math.floor(100000000 + Math.random() * 900000000));
+    return num;
   },
 
   generateUUID() {
